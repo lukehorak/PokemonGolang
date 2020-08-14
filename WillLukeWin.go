@@ -1,3 +1,6 @@
+// Test function for learning how to upload/use Google cloud funcitons
+//
+
 // Package p contains an HTTP Cloud Function.
 package p
 
