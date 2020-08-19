@@ -21,7 +21,9 @@ type MatchLog struct {
 	Log string
 }
 
-// Player type and constructor
+/////////////////////////////////////////////
+// Player type
+/////////////////////////////////////////////
 type Player struct {
 	Username string
 	Team     map[string]Pokemon
@@ -32,19 +34,29 @@ func newPlayer(id string, username string) Player {
 	p := Player{Username: username, Id: id, Team: make(map[string]Pokemon)}
 	return p
 }
-
 func (p Player) addMon(species string) {
 	poke := newPokemon(species)
 	p.Team[species] = poke
 	return
 }
 
+/////////////////////////////////////////////
+// Status type
+/////////////////////////////////////////////
 type Status struct {
 	Condition string
 	SetBy     string
 }
 
-// Pokemon and Methods
+// set status on Pokemon and record who set it
+func (s Status) setStatus(status string, setBy string) {
+	s.Condition = status
+	s.SetBy = setBy
+}
+
+/////////////////////////////////////////////
+// Pokemon type
+/////////////////////////////////////////////
 type Pokemon struct {
 	Name     string
 	Species  string
