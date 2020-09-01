@@ -21,6 +21,11 @@ type MatchLog struct {
 	Log string
 }
 
+func getName(pipe string) (string, string) {
+	name := strings.Split(pipe, "a: ")
+	return name[0], name[1]
+}
+
 /////////////////////////////////////////////
 // Player type
 /////////////////////////////////////////////
@@ -49,9 +54,9 @@ type Status struct {
 }
 
 // set status on Pokemon and record who set it
-func (s Status) setStatus(status string, setBy string) {
-	s.Condition = status
-	s.SetBy = setBy
+func newStatus(status string, setBy string) Status {
+	s := Status{Condition: status, SetBy: setBy}
+	return s
 }
 
 /////////////////////////////////////////////
@@ -67,8 +72,12 @@ type Pokemon struct {
 }
 
 func newPokemon(species string) Pokemon {
-	p := Pokemon{Species: species, Alive: true, Status: Status{Condition: "none", SetBy: "none"}}
+	p := Pokemon{Species: species, Alive: true, Status: Status{Condition: "", SetBy: ""}}
 	return p
+}
+
+func (p *Pokemon) setStatus(status string, setBy string) {
+	p.Status = newStatus(status, setBy)
 }
 
 func (p *Pokemon) kill(killer string) {
@@ -80,17 +89,40 @@ func (p *Pokemon) kill(killer string) {
 // Functions
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-func parseLine(line string, teams map[string]Player) {
-	pipes := strings.Split(line, "|")
+func parseLine(lines *[]string, i int, teams map[string]Player, ref map[string]string) {
+	pipes := strings.Split((*lines)[i], "|")
 	keyword := pipes[1]
 
 	switch keyword {
 	case "poke":
 		species := strings.Split(pipes[3], ",")[0]
 		player := pipes[2]
-
-		fmt.Printf("Player --> %s \n\n", player)
 		teams[player].addMon(species)
+		break
+	case "switch":
+		nickname := strings.Split(pipes[2], "a: ")[1]
+		species := strings.Split(pipes[3], ",")[0]
+		// check if nickname was taken, take it if not
+		if _, ok := ref[nickname]; ok {
+			fmt.Printf("switched to %s\n", nickname)
+		} else {
+			ref[nickname] = species
+		}
+		break
+	case "-status":
+		// TODO - Handle self-inflicting status (e.g. Toxic Orb) (currently throws an error on line 46 of logs)
+
+		previous := strings.Split((*lines)[i-1], "|")
+		_, setByName := getName(previous[1])
+		setBy := ref[setByName]
+		status := previous[2]
+		defTrainer, targetName := getName(pipes[1])
+		target := ref[targetName]
+		t := teams[defTrainer].Team[target]
+		t.setStatus(status, setBy)
+		break
+	case "-damage":
+		//next := strings.Split((*lines)[i-1], "|")
 		break
 	}
 	return
@@ -119,6 +151,8 @@ func summ(url string) {
 		log.Println(errr)
 	}
 
+	reference := make(map[string]string)
+
 	teams := make(map[string]Player)
 	teams["p1"] = newPlayer("p1", matchlog.P1)
 	teams["p2"] = newPlayer("p2", matchlog.P2)
@@ -126,13 +160,14 @@ func summ(url string) {
 	// // Separate for parsing
 	lines := strings.Split(matchlog.Log, "\n")
 
-	for i := 0; i < 30; i++ {
-		parseLine(lines[i], teams)
+	// Parse
+	for i := 0; i < 522; i++ {
+		parseLine(&lines, i, teams, reference)
 	}
 
 	//Print all
-	//pretty, _ := json.MarshalIndent(matchlog, "", "	")
-	fmt.Printf("%v", teams["p1"].Team)
+	pretty, _ := json.MarshalIndent(reference, "", "	")
+	fmt.Printf("%s", pretty)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
